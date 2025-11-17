@@ -1,0 +1,165 @@
+Software Design Document
+Project: pyRevit Rebar Generator (Beam-first)
+File: c:\Users\Alvin\Documents\GitHub\BIMPlus\lib\SoftwareDesignDocument.txt
+Author: GitHub Copilot
+Date: 2025-11-17
+
+1. Purpose
+The Rebar Generator script (pyRevit) automates placement of longitudinal bars and stirrups for beams in Revit. Initial focus: beams only. Inputs are kept simple and extensible for front-end integration and for later expansion to slabs, walls, and foundations.
+
+2. Goals and Objectives
+- Provide a repeatable, auditable workflow to place rebar on beams based on user input.
+- Support single-beam and bulk (all beams of a chosen family/type) application.
+- Accept inputs that map to CAD detail or manual entry (scalable for future CAD parsing).
+- Use pyRevit + Revit API (see developer references in LLMReference.txt) and follow pyRevit transaction/GUI patterns.
+
+3. Scope
+In scope:
+- UI to collect minimal rebar parameters.
+- Selection of target beam type or active selection.
+- Create longitudinal bars (top/bottom/left/right layers) and closed/open stirrups with variable spacing (up to 3 segments).
+- Option to apply to selected beam(s) or all instances of the chosen type.
+
+Out of scope (phase 1):
+- Floors, walls, foundations implementation.
+- Full CAD parsing and mapping (only API hooks and data structures prepared).
+- Advanced bar shaping beyond standard straight bars/stirrups (except planned mapping to RebarShape from library).
+
+4. References
+Primary doc set: local LLMReference.txt (pyRevit docs and Revit API references). Key modules to use:
+- pyrevit.forms (forms, selection)
+- pyrevit.revit (db wrappers)
+- pyrevit.output (logging)
+- Revit API classes: Rebar, RebarBarType, RebarShape, RebarHookTypeId, CurveArray, Transaction
+
+5. Inputs (user-facing)
+Minimal input model (simple fields; future front-end can map GUI -> same model):
+- target_selection:
+    - "selected" (apply to user-selected beam element(s))
+    - "all_of_type" (apply to every placed instance of selected family/type)
+- family_type_id (if all_of_type chosen or for identifying type)
+- longitudinal_bars:
+    - top_count (int)
+    - bottom_count (int)
+    - left_count (int)   # optional for beams with 2-axis layering
+    - right_count (int)  # optional
+- longitudinal_rebar:
+    - bar_type_id or diameter_mm (prefer bar type if available)
+    - cover_mm (distance from face to centerline of bar)  # optional default
+- stirrup:
+    - stirrup_rebar_type_id or diameter_mm
+    - stirrup_shape_id (map to RebarShape)
+    - spacing_segments: list of up to 3 tuples (length_fraction_or_positions, spacing_mm)
+        - e.g. [(0.2, 150), (0.6, 100), (0.2, 150)] or explicit ranges
+    - end_spacing_override_mm (optional)
+- apply_to_each_beam_orientation (bool)  # whether to rotate bar layout based on beam local axis
+- create_preview_only (bool)  # dry run: geometry & counts but no commit
+
+Note: Inputs should be JSON-serializable for future front-end.
+
+6. Data Model (internal)
+- RebarSpec
+    - target_scope {selected|all_of_type}
+    - type_identity {elementId / familyName+typeName}
+    - layers: {top: n, bottom: n, left: n, right: n}
+    - bar_type_id or diameter
+    - stirrup: {bar_type_id, shape_id, spacing_segments: [{start_frac,end_frac,spacing_mm}], hook_settings}
+    - cover_mm
+
+- BeamPlacementPlan
+    - host_element_id
+    - host_geometry (location line, width, height, local axes)
+    - bar_positions: list of CurveArray + target face/profile
+    - stirrup_curves + segment definitions
+
+7. User Interaction / UI Flow
+- Step 1: User runs pyRevit button.
+- Step 2: Form opens (pyrevit.forms) with fields matching Inputs. Buttons: "Pick Beam(s)", "Pick Type", "Preview", "Apply".
+- Step 3: User picks either element selection or picks a family/type.
+- Step 4: User fills counts, diameters or chooses bar types from list (bar type dropdown enumerated from document).
+- Step 5: User enters stirrup spacing segments (UI supports up to 3 segments).
+- Step 6: Preview calculates but does not commit; user may adjust.
+- Step 7: Apply creates rebar within a Revit TransactionGroup.
+
+8. Algorithm / Implementation Outline
+High-level steps:
+1) Input validation. Convert diameters to RebarBarType if provided; if not available, attempt to find closest type; warn/abort if none.
+2) Resolve target beam element set:
+     - If "selected": use user selection (validate structural framing).
+     - If "all_of_type": query Document for elements of the chosen FamilySymbol.
+3) For each host beam:
+     a) Extract geometry: beam location line, cross-section width & depth, orientation, ends, and structural analysis info if needed.
+     b) Compute bar/layout positions:
+            - Determine cover offsets and bar centerline positions across section.
+            - Distribute counts per layer evenly in along-section and across width depending on layer type. Account for hooks and end anchorage when placing curves.
+     c) Create longitudinal rebar:
+            - Build CurveArray representing bar centerline (line along beam length offset to proper local position).
+            - Use Rebar.CreateFromCurvesAndShape or Rebar.CreateFromCurves (depending on need) with bar type and RebarShape.
+     d) Create stirrups:
+            - Create closed stirrup curves perpendicular to beam axis located along beam with spacing segments.
+            - For varying spacing: calculate set of stirrup locations by subdividing beam length into segments and filling with spacing.
+            - Place stirrups with Rebar.CreateFromCurves with appropriate RebarStyle (stirrup).
+4) Commit within TransactionGroup. Optionally group created rebar into a RebarSet or set shared parameters for traceability.
+
+Important API notes:
+- Always work in a Transaction / TransactionGroup.
+- Use RebarBarType = FilteredElementCollector(doc).OfClass(RebarBarType).
+- For Curve arrays, use Autodesk.Revit.DB.CurveArray (or wrapper via pyrevit.revit).
+- Check Rebar.CreateFromCurvesAndShape signatures and parameters for placement/host info.
+
+9. Validation and Error Handling
+- Validate counts >=0 and integer.
+- Validate spacing > minimum (based on code / bar diameter).
+- If bar type not found and diameter provided, throw warning and ask user to map to type.
+- If host geometry not standard (curved, variable section), skip and log with user notification.
+- Provide preview/dry-run to let user confirm.
+
+10. Logging / Output
+- Use pyrevit.output for console and log messages.
+- Create summary report: number of bars created, bar types, host element ids, warnings, and error list.
+- Optionally, set shared parameter on host element describing generated rebar spec for traceability.
+
+11. Testing Strategy
+- Unit tests: validate spacing segment parsing and bar distribution algorithms.
+- Integration tests: run on small sample Revit project with one beam family type.
+- Manual acceptance tests:
+    - Single beam selection, create top/bottom bars and uniform stirrups.
+    - Apply to all_of_type and verify instances updated.
+    - Preview vs apply differences.
+- Edge cases: very short beams; beams with openings; non-structural beams (should be rejected).
+
+12. Deployment
+- Package as a pyRevit command under BIMPlus extension:
+    - TestPush.pushbutton/script.py
+    - resources UI forms and static JSON templates
+- Add manifest and icons per pyRevit packaging guidelines (see LLMReference toolbox).
+- Version control in repo and include migration/upgrade code if parameters change.
+
+13. Risks and Mitigations
+- Revit API constraints (Rebar shapes/types missing): Mitigation: provide fallback to straight bars, notify user, offer to create bar types or require manual mapping.
+- Geometry mismatch (host geometry unusual or curved beams): Mitigation: detect unsupported geometry early and skip with clear report. Add future support incrementally.
+- Placement collisions (bars outside host, clashing with other elements): Mitigation: validate bar centerlines against host solid and check clearances; provide preview and allow user overrides.
+- Performance when applying to many elements: Mitigation: batch operations in TransactionGroup, progress reporting, allow selection limit and background job patterns.
+- Version and units differences between CAD and Revit: Mitigation: enforce unit conversions and show units in UI.
+- User permissions / undo issues: Mitigation: create TransactionGroup and allow rollback if any critical error occurs; provide backup instructions.
+
+14. Extensibility Notes
+- UI: store user presets; make inputs JSON schema-driven for easy front-end integration.
+- Other element types: encapsulate host-specific placement logic so slabs/walls/foundations can reuse rebar generation engine.
+
+15. Security & Safety
+- Script will not attempt to access the network or external resources by default.
+- Always require explicit user action to apply modifications.
+- Log sensitive actions but avoid writing sensitive project data to external locations.
+
+16. Open Questions (items requiring clarification before implementation)
+- Which CAD formats should be supported initially (DXF, DWG, exported CSV)? (Open) -- No need as it is the user who will provide the data manually for now.
+- How should cover rules be defined per project (global default vs per-beam)? (Open) -- global default, ask for the user to input it.
+- Should hooks and bend details be automatically determined from code (e.g., codes for hook lengths) or provided explicitly? (Open) -- for end zones, use 90-degree hooks with standard lengths based on bar diameter.
+- How to map CAD-layer names/notations to layers in RebarSpec (auto mapping rules needed)? (Open) -- for now, user will input directly.
+- Should the tool create or require existing RebarBarType instances or convert simple diameter to nearest bar type automatically? (Open) -- prompt the user to select from existing types
+- How to handle beams with variable cross-section along length? (Open) -- skip with warning for now.
+- How to place bars around openings or near end connections (splice/anchorage)? (Open) -- for now, ignore openings; future enhancement.
+- Output metadata: what shared parameter schema should be used to store generation provenance? (Open) -- define a simple JSON string parameter with key details.
+
+End of Document
