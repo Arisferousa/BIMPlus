@@ -15,6 +15,7 @@ Categories:
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI.Selection import ObjectType
 import math
+import clr
 
 clr.AddReference("RevitServices")
 from pyrevit import revit, HOST_APP, forms
