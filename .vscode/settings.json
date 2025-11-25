@@ -1,0 +1,11 @@
+{
+    "python.analysis.extraPaths": [
+        "./lib",
+        "./lib/APIStubs"
+    ],
+    "python.autoComplete.extraPaths": [
+        "./lib",
+        "./lib/APIStubs"
+    ],
+    "python.analysis.typeCheckingMode": "basic"
+}
