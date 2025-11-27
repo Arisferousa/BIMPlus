@@ -6,7 +6,6 @@ import _Starty as starty
 from pyrevit import forms, revit, HOST_APP
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI.Selection import ObjectType
-from RevitServices.Persistence import DocumentManager
 
 # filepath: c:/Users/Alvin/Documents/GitHub/BIMPlus/BIMPlus.tab/Test1.panel/TestPush.pushbutton/script.py
 # Prototype Rebar Generator (beam-first) - first-pass implementation
@@ -19,9 +18,8 @@ lib_dir = os.path.join(repo_root, 'lib')
 if lib_dir not in sys.path:
     sys.path.append(lib_dir)
 
-
-doc = starty.doc
-uidoc = starty.uidoc
+doc = HOST_APP.doc
+uidoc = HOST_APP.uidoc
 
 # -----------------------
 # Small helper functions
@@ -43,11 +41,12 @@ def safe_float(val, default=0.0):
 # -----------------------
 # User inputs (simple form)
 # -----------------------
-scope = forms.ask_for_one(
+scope = forms.ask_for_one_item(
     ["selected", "all_of_type"],
     default="selected",
     message="Target scope"
 )
+
 
 # Minimal numeric inputs
 top_count = safe_int(forms.ask_for_string("Top layer count (integer)", default="2"))
@@ -56,7 +55,8 @@ cover_mm = safe_float(forms.ask_for_string("Concrete cover (mm)", default="30"))
 long_dia_mm = safe_float(forms.ask_for_string("Longitudinal bar diameter (mm)", default="16"))
 stirrup_dia_mm = safe_float(forms.ask_for_string("Stirrup diameter (mm)", default="8"))
 stirrup_spacing_mm = safe_float(forms.ask_for_string("Stirrup spacing (mm)", default="150"))
-preview_only = forms.ask_for_one(["yes", "no"], default="yes", message="Preview only?") == "yes"
+preview_only = forms.ask_for_one_item(["yes", "no"], default="yes", message="Preview only?") == "yes"
+
 
 # Resolve targets
 targets = []
