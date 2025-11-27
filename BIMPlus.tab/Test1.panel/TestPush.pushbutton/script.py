@@ -20,7 +20,6 @@ if lib_dir not in sys.path:
     sys.path.append(lib_dir)
 
 
-
 doc = starty.doc
 uidoc = starty.uidoc
 
@@ -29,7 +28,6 @@ uidoc = starty.uidoc
 # -----------------------
 def to_internal_mm(mm_val):
     return UnitUtils.ConvertToInternalUnits(mm_val, UnitTypeId.Millimeters)
-
 def safe_int(val, default=0):
     try:
         return int(val)
@@ -201,7 +199,6 @@ for host in targets:
             stirrup_curves.append(l2)
             stirrup_curves.append(l3)
             stirrup_curves.append(l4)
-
     # collect shapes (bars in one set, stirrups separate)
     all_debug_shapes.append((bar_curves, "Preview_Longitudinal_Bars_{}".format(host.Id)))
     if stirrup_curves:
