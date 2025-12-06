@@ -3,9 +3,10 @@ import os
 import sys
 import math
 import _Starty as starty
-from pyrevit import forms, revit, HOST_APP
+from pyrevit import forms, revit, HOST_APP, DOCS
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI.Selection import ObjectType
+
 
 # filepath: c:/Users/Alvin/Documents/GitHub/BIMPlus/BIMPlus.tab/Test1.panel/TestPush.pushbutton/script.py
 # Prototype Rebar Generator (beam-first) - first-pass implementation
@@ -49,12 +50,12 @@ scope = forms.ask_for_one_item(
 
 
 # Minimal numeric inputs
-top_count = safe_int(forms.ask_for_string("Top layer count (integer)", default="2"))
-bottom_count = safe_int(forms.ask_for_string("Bottom layer count (integer)", default="2"))
-cover_mm = safe_float(forms.ask_for_string("Concrete cover (mm)", default="30"))
-long_dia_mm = safe_float(forms.ask_for_string("Longitudinal bar diameter (mm)", default="16"))
-stirrup_dia_mm = safe_float(forms.ask_for_string("Stirrup diameter (mm)", default="8"))
-stirrup_spacing_mm = safe_float(forms.ask_for_string("Stirrup spacing (mm)", default="150"))
+top_count = safe_int(forms.ask_for_string(default="2", prompt="Top layer count (integer)"))
+bottom_count = safe_int(forms.ask_for_string(default="2", prompt="Bottom layer count (integer)"))
+cover_mm = safe_float(forms.ask_for_string(default="30", prompt="Concrete cover (mm)"))
+long_dia_mm = safe_float(forms.ask_for_string(default="16", prompt="Longitudinal bar diameter (mm)"))
+stirrup_dia_mm = safe_float(forms.ask_for_string(default="8", prompt="Stirrup diameter (mm)"))
+stirrup_spacing_mm = safe_float(forms.ask_for_string(default="150", prompt="Stirrup spacing (mm)"))
 preview_only = forms.ask_for_one_item(["yes", "no"], default="yes", message="Preview only?") == "yes"
 
 
@@ -203,7 +204,6 @@ for host in targets:
     all_debug_shapes.append((bar_curves, "Preview_Longitudinal_Bars_{}".format(host.Id)))
     if stirrup_curves:
         all_debug_shapes.append((stirrup_curves, "Preview_Stirrups_{}".format(host.Id)))
-
 # -----------------------
 # Visualization / Creation
 # -----------------------
@@ -222,3 +222,4 @@ forms.alert(
     ),
     title="Done"
 )
+
