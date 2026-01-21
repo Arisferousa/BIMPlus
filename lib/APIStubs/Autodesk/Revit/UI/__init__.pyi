@@ -1,4 +1,24 @@
-from typing import Tuple, Set, Iterable, List
+from typing import Tuple, Set, Iterable, List, TYPE_CHECKING, Any, TypeVar, overload, Generic
+
+T = TypeVar('T')
+class ICollection(Generic[T]):
+    @property
+    def Count(self) -> int: ...
+    def __getitem__(self, index: int) -> T: ...
+    def __len__(self) -> int: ...
+    def __iter__(self) -> Any: ...
+
+IDictionary = Any
+IList = ICollection
+Object = Any
+IntPtr = Any
+AsyncCallback = Any
+IAsyncResult = Any
+UserControl = Any
+
+if TYPE_CHECKING:
+    from Autodesk.Revit.DB import Document, ElementId, XYZ, Reference, View, Element, FamilySymbol
+    from Autodesk.Revit.UI.Selection import Selection
 
 
 class TabbedDialogAction:

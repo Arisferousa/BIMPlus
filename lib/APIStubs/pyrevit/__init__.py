@@ -204,12 +204,14 @@ class _HostApplication(object):
 
     @property
     def uiapp(self):
+        # type: () -> UI.UIApplication
         """Return UIApplication provided to the running command."""
         if isinstance(__revit__, UI.UIApplication):  #pylint: disable=undefined-variable
             return __revit__  #pylint: disable=undefined-variable
 
     @property
     def app(self):
+        # type: () -> ApplicationServices.Application
         """Return Application provided to the running command."""
         if self.uiapp:
             return self.uiapp.Application
@@ -228,16 +230,19 @@ class _HostApplication(object):
 
     @property
     def uidoc(self):
+        # type: () -> UI.UIDocument
         """Return active UIDocument."""
         return getattr(self.uiapp, 'ActiveUIDocument', None)
 
     @property
     def doc(self):
+        # type: () -> DB.Document
         """Return active Document."""
         return getattr(self.uidoc, 'Document', None)
 
     @property
     def active_view(self):
+        # type: () -> DB.View
         """Return view that is active (UIDocument.ActiveView)."""
         return getattr(self.uidoc, 'ActiveView', None)
 

@@ -1,7 +1,0 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Beam Rebar Generator" Height="600" Width="500" ResizeMode="NoResize">
-    <Grid>
-        <WebBrowser Name="browser" ScrollViewer.VerticalScrollBarVisibility="Disabled"/>
-    </Grid>
-</Window>

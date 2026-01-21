@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> 
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { display: flex; flex-direction: column; gap: 15px; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #preview-box { display: flex; justify-content: center; align-items: center; background: #333; padding: 20px; border-radius: 8px; }
+        svg { background: #444; border: 2px dashed #666; }
+        .rebar { fill: #ff5555; stroke: white; stroke-width: 1px; }
+        .stirrup { fill: none; stroke: #00aaff; stroke-width: 2px; }
+        .input-group { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+        input, select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 60px;}
+        select { width: 150px; }
+        button { background-color: #0078D7; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; width: 100%;}
+    </style>
+</head>
+<body>
+
+<input type="hidden" id="data-mailbox" value="" />
+
+<div class="container">
+    <div class="card" id="preview-box">
+        <svg id="beamSvg" width="200" height="300" viewBox="0 0 400 600">
+            <rect x="50" y="50" width="300" height="500" fill="#bbb" stroke="none" />
+            <rect x="70" y="70" width="260" height="460" class="stirrup" rx="10" />
+            <g id="grp-top"></g>
+            <g id="grp-bottom"></g>
+            <g id="grp-side"></g>
+        </svg>
+    </div>
+
+    <div class="card">
+        <h3>Configuration</h3>
+        <div class="input-group">
+            <label>Rebar Type</label>
+            <select id="rebarType"></select>
+        </div>
+        <div class="input-group">
+            <label>Top Count</label>
+            <input type="number" id="topCount" value="3" min="2" oninput="updatePreview()">
+        </div>
+        <div class="input-group">
+            <label>Bottom Count</label>
+            <input type="number" id="btmCount" value="3" min="2" oninput="updatePreview()">
+        </div>
+        <div class="input-group">
+            <label>Side (Left/Right)</label>
+            <input type="number" id="sideCount" value="1" min="0" oninput="updatePreview()">
+        </div>
+    </div>
+
+    <button onclick="sendDataToRevit()">Create Rebar</button>
+</div>
+
+<script>
+    // --- 1. READ FROM MAILBOX ---
+    function readMailbox() {
+        try {
+            // Read the DOM element directly (It is ALWAYS a string)
+            var rawValue = document.getElementById('data-mailbox').value;
+            
+            if (!rawValue) return;
+
+            var jsonString = decodeURIComponent(rawValue);
+            var types = JSON.parse(jsonString);
+
+            var select = document.getElementById('rebarType');
+            select.innerHTML = "";
+            for (var i = 0; i < types.length; i++) {
+                var opt = document.createElement('option');
+                opt.value = types[i].id;
+                opt.innerHTML = types[i].name;
+                select.appendChild(opt);
+            }
+        } catch (e) {
+            alert("Bridge Error: " + e.message);
+        }
+    }
+
+    // --- 2. SEND TO REVIT ---
+    function sendDataToRevit() {
+        var data = {
+            rebarId: document.getElementById('rebarType').value,
+            top: document.getElementById('topCount').value,
+            bottom: document.getElementById('btmCount').value,
+            side: document.getElementById('sideCount').value
+        };
+        var safeString = encodeURIComponent(JSON.stringify(data));
+        window.location = 'pyrevit://create_rebar/' + safeString;
+    }
+
+    // --- 3. PREVIEW LOGIC ---
+    function updatePreview() {
+        try {
+            var topN = parseInt(document.getElementById('topCount').value) || 0;
+            var btmN = parseInt(document.getElementById('btmCount').value) || 0;
+            var sideN = parseInt(document.getElementById('sideCount').value) || 0;
+            drawRebarRow('grp-top', topN, 85, 300, 85); 
+            drawRebarRow('grp-bottom', btmN, 85, 300, 515); 
+            drawSideRebar('grp-side', sideN, 85, 515, 85, 315);
+        } catch(e){}
+    }
+
+    function drawRebarRow(groupId, count, xStart, xEnd, yPos) {
+        var container = document.getElementById(groupId);
+        if(!container) return; 
+        container.innerHTML = ''; 
+        if (count < 1) return;
+        var width = xEnd - xStart;
+        var gap = count > 1 ? width / (count - 1) : 0;
+        for (var i = 0; i < count; i++) {
+            var cx = count > 1 ? xStart + (gap * i) : xStart + (width/2);
+            container.innerHTML += '<circle cx="' + cx + '" cy="' + yPos + '" r="12" class="rebar" />';
+        }
+    }
+
+    function drawSideRebar(groupId, count, yTop, yBtm, xLeft, xRight) {
+        var container = document.getElementById(groupId);
+        if(!container) return;
+        container.innerHTML = ''; 
+        if (count < 1) return;
+        var height = yBtm - yTop;
+        var step = height / (count + 1);
+        for (var i = 1; i <= count; i++) {
+            var cy = yTop + (step * i);
+            container.innerHTML += '<circle cx="' + xLeft + '" cy="' + cy + '" r="12" class="rebar" />';
+            container.innerHTML += '<circle cx="' + xRight + '" cy="' + cy + '" r="12" class="rebar" />';
+        }
+    }
+
+    updatePreview();
+</script>
+</body>
+</html>

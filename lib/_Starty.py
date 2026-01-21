@@ -18,8 +18,6 @@ import math
 import clr
 clr.AddReference("RevitServices")
 from pyrevit import revit, HOST_APP, forms
-from RevitServices.Persistence import DocumentManager
-from RevitServices.Transactions import TransactionManager
 
 # Global references
 doc = HOST_APP.doc
@@ -34,7 +32,6 @@ def print_unit_to_mm(feet):
     """Convert and print Revit internal units (feet) to millimeters."""
     mm = UnitUtils.ConvertFromInternalUnits(feet, UnitTypeId.Millimeters)
     print("Width (mm): {}".format(mm))
-
 
 def convert_to_internal_units(value, unit_type):
     """Convert external units to Revit internal units (feet)."""
